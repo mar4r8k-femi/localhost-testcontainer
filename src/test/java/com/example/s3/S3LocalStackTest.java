@@ -84,7 +84,7 @@ class S3LocalStackTest extends LocalStackBase {
     @Test
     @DisplayName("5. upload JSON payload and verify content-type round-trip")
     void uploadJsonPayload() {
-        String json = "{"id":1,"name":"test"}";
+        String json = "{\"id\":1,\"name\":\"test\"}";
         s3Service.putObject(bucket, "data.json",
             json.getBytes(StandardCharsets.UTF_8), "application/json");
 

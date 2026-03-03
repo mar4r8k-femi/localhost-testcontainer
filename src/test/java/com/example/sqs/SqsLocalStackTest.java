@@ -86,7 +86,7 @@ class SqsLocalStackTest extends LocalStackBase {
     @Test
     @DisplayName("4. send JSON payload as message body")
     void sendJsonMessageBody() {
-        String json = "{"orderId":"123","status":"PENDING"}";
+        String json = "{\"orderId\":\"123\",\"status\":\"PENDING\"}";
         sqsService.sendMessage(queueUrl, json);
 
         List<Message> messages = sqsService.receiveMessages(queueUrl, 1);
