@@ -41,8 +41,6 @@ pipeline:
                     envVariables:
                       LOCALSTACK_IMAGE: localstack/localstack:3.0
                       AWS_DEFAULT_REGION: us-east-1
-                      # Prevent Ryuk from reaping the shared container between
-                      # test classes; cleanup falls back to JVM shutdown hook.
                       TESTCONTAINERS_RYUK_DISABLED: "true"
           caching:
             enabled: false
@@ -116,9 +114,13 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |-
+                            # .testcontainers.properties uses Java escape syntax
+                            # (tcp\://localhost\:42145). Strip backslashes so
+                            # DOCKER_HOST is a valid URL: tcp://localhost:42145
                             export DOCKER_HOST=$(
                               grep 'docker.host' ~/.testcontainers.properties \
-                                | cut -d'=' -f2 \
+                                | cut -d'=' -f2- \
+                                | sed 's/\\//g' \
                                 | tr -d ' '
                             )
 
