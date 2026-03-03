@@ -1,0 +1,89 @@
+pipeline:
+  name: localstack-t3stcontainers-hosted
+  identifier: localstack_testcontainers_hosted
+  projectIdentifier: Reference_Architecture
+  orgIdentifier: demo
+  stages:
+    - stage:
+        name: Integration Test - Testcontainers Cloud Agent
+        identifier: variant_b_tcc_agent
+        type: CI
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - stepGroup:
+                  name: TCC Agent and Tests
+                  identifier: tcc_group
+                  steps:
+                    - step:
+                        name: TCC Agent Daemon
+                        identifier: tcc_agent_daemon
+                        type: Background
+                        spec:
+                          shell: Bash
+                          command: |
+                            curl -fsSL \
+                              https://app.testcontainers.cloud/download/testcontainers-cloud-agent_linux_x86-64 \
+                              -o /usr/local/bin/tcc-agent
+                            chmod +x /usr/local/bin/tcc-agent
+                            echo "Starting TCC agent..."
+                            tcc-agent
+                          envVariables:
+                            TC_CLOUD_TOKEN: <+secrets.getValue("account.testcontainer-token-demo")>
+                          portBindings:
+                            "42145": "42145"
+                    - step:
+                        name: Verify Agent Ready
+                        identifier: verify_agent_ready
+                        type: Run
+                        spec:
+                          shell: Bash
+                          command: |
+                            echo "Waiting for TCC agent registration..."
+                            timeout 60 bash -c \
+                              'until [ -f ~/.testcontainers.properties ]; do sleep 3; done'
+
+                            echo ""
+                            echo "=== ~/.testcontainers.properties ==="
+                            cat ~/.testcontainers.properties
+                            # docker.host=tcp\://localhost\:42145
+                            # Containers will run in TCC cloud, not on this VM
+                        contextType: Pipeline
+                    - step:
+                        name: Run LocalStack Integration Tests
+                        identifier: variant_b_run_tests
+                        type: Run
+                        spec:
+                          shell: Bash
+                          command: |-
+                            export DOCKER_HOST=$(
+                              grep 'docker.host' ~/.testcontainers.properties \
+                                | cut -d'=' -f2 \
+                                | tr -d ' '
+                            )
+
+                            mvn test -B 2>&1 | tee test-output.log
+
+                            echo ""
+                            echo "=== Test Summary ==="
+                            grep -E "Tests run:|BUILD" test-output.log | tail -5
+                          envVariables:
+                            TC_CLOUD_TOKEN: <+secrets.getValue("account.testcontainer-token-demo")>
+                            LOCALSTACK_IMAGE: localstack/localstack:3.0
+                            AWS_DEFAULT_REGION: us-east-1
+                        contextType: Pipeline
+          caching:
+            enabled: false
+            paths: []
+          buildIntelligence:
+            enabled: false
+        description: run the same tests, but make Testcontainers talk to Testcontainers Cloud so containers run remotely, not on the CI worker.
+  tags:
+    owner: danf
