@@ -1,5 +1,6 @@
 package com.example.base;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.containers.localstack.LocalStackContainer.Service;
 import org.testcontainers.utility.DockerImageName;
@@ -16,12 +17,12 @@ import software.amazon.awssdk.services.sqs.SqsClient;
  *
  * Uses the Testcontainers Singleton pattern: the container is started once
  * via a static initializer and shared across all test classes for the life
- * of the JVM. Ryuk cleans it up on JVM exit.
+ * of the JVM. Cleanup is handled by the JVM shutdown hook (TESTCONTAINERS_RYUK_DISABLED=true
+ * in the run scripts prevents Ryuk from reaping the container mid-session).
  *
- * Replacing @Testcontainers + @Container with a static initializer prevents
- * the container from being stopped between test classes (the @Testcontainers
- * extension, being inherited, called afterAll per class and shut the container
- * down before the next class could use it).
+ * The @BeforeAll guard restarts the container if it was stopped for any reason
+ * before a test class begins, so AWS clients built in @BeforeEach always get
+ * a live endpoint.
  */
 public abstract class LocalStackBase {
 
@@ -35,6 +36,13 @@ public abstract class LocalStackBase {
 
     static {
         localstack.start();
+    }
+
+    @BeforeAll
+    static void ensureContainerRunning() {
+        if (!localstack.isRunning()) {
+            localstack.start();
+        }
     }
 
     // ── AWS SDK client factories ───────────────────────────────────────────
