@@ -10,6 +10,11 @@
   <logger name="com.github.dockerjava"       level="WARN"/>
   <logger name="software.amazon.awssdk"      level="WARN"/>
 
+  <!-- Suppress Ryuk retry warnings on macOS Docker Desktop: Ryuk's socket
+       takes a moment to bind after the container starts; the retries always
+       succeed and the warnings are purely cosmetic. -->
+  <logger name="org.testcontainers.utility.RyukResourceReaper" level="ERROR"/>
+
   <!-- Your own code at DEBUG -->
   <logger name="com.example"                 level="DEBUG"/>
 
