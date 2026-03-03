@@ -4,6 +4,10 @@ import com.example.base.LocalStackBase;
 import com.example.model.OrderItem;
 import com.example.service.DynamoDbService;
 import org.junit.jupiter.api.*;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.containers.localstack.LocalStackContainer.Service;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 import java.util.List;
@@ -14,16 +18,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests for DynamoDbService against a real LocalStack container.
+ *
+ * The {@code @Container} annotation on a static field gives this test class
+ * its own DynamoDB container scoped to the class lifetime: Testcontainers
+ * starts it before the first test and discards it after the last. No shared
+ * state leaks between classes, and no manual cleanup of table rows is needed —
+ * the container is simply thrown away.
  */
+@Testcontainers
 @TestMethodOrder(MethodOrderer.DisplayName.class)
 class DynamoLocalStackTest extends LocalStackBase {
+
+    @Container
+    static LocalStackContainer localstack = new LocalStackContainer(IMAGE)
+        .withServices(Service.DYNAMODB);
 
     private DynamoDbClient dynamoDbClient;
     private DynamoDbService dynamoDbService;
 
     @BeforeEach
     void setUp() {
-        dynamoDbClient  = dynamoDbClient();
+        dynamoDbClient  = dynamoDbClient(localstack);
         dynamoDbService = new DynamoDbService(dynamoDbClient);
         dynamoDbService.createTableIfNotExists();
     }

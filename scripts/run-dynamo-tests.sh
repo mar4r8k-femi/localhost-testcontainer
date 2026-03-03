@@ -14,7 +14,6 @@ echo ""
 
 export LOCALSTACK_IMAGE="${LOCALSTACK_IMAGE:-localstack/localstack:3.0}"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
-export TESTCONTAINERS_RYUK_DISABLED=true
 
 echo "=== Running DynamoDB Integration Tests ==="
 echo "  Image  : $LOCALSTACK_IMAGE"

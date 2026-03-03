@@ -16,9 +16,6 @@ echo ""
 # ── Defaults ──────────────────────────────────────────────────────────────────
 export LOCALSTACK_IMAGE="${LOCALSTACK_IMAGE:-localstack/localstack:3.0}"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-east-1}"
-# Disable Ryuk so it cannot reap the shared LocalStack container between test
-# classes. Testcontainers' JVM shutdown hook handles cleanup on exit instead.
-export TESTCONTAINERS_RYUK_DISABLED=true
 
 echo "=== Running All LocalStack Integration Tests ==="
 echo "  Image  : $LOCALSTACK_IMAGE"
