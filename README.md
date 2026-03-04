@@ -103,7 +103,26 @@ The Harness pipeline ([.harness/main-pipeline.yaml](.harness/main-pipeline.yaml)
 | TCC agent         | None                                     | Background daemon on port 42145          |
 | `DOCKER_HOST`     | Not set (auto-detects `/var/run/docker.sock`) | Parsed from `~/.testcontainers.properties` |
 | `TC_CLOUD_TOKEN`  | Not needed                               | Required secret                          |
-| Extra steps       | None                                     | TCC Agent Daemon + Verify Agent Ready    |
+
+### Variant A: use cases
+
+Variant A runs three step groups sequentially. Each group has a **Watch Container Events**
+background step (`docker events`) that streams container lifecycle events
+(`create → start → stop → destroy`) in real time, making the per-method container
+churn visible in the Harness step log.
+
+| Step group | Test class | Containers per test method | Scenario |
+|---|---|---|---|
+| UC1: Async Messaging (SQS) | `SqsLocalStackTest` | 1 — LocalStack | SQS send / receive / delete |
+| UC2: Read-Through Cache | `TwoContainerTest` | 2 — Postgres + Redis | Cache miss → Postgres fallback → warm Redis |
+| UC3: Document Storage | `ThreeContainerTest` | 3 — LocalStack (S3) + Postgres + Redis | Upload to S3, owner in Postgres, ref cached in Redis |
+
+### Variant B: Testcontainers Cloud
+
+The TCC agent runs as a background step, rewrites the Docker socket, and proxies all
+`docker` calls to Testcontainers Cloud. The CI VM is a pure orchestrator — no containers
+run locally. Steps: **TCC Agent Daemon → Verify Agent Ready → Run Integration Tests**
+(full suite).
 
 ## Environment variables
 
