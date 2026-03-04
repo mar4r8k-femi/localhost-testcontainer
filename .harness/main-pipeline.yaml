@@ -1,26 +1,15 @@
 pipeline:
-  name: localstack-t3stcontainers-hosted
-  identifier: localstack_testcontainers_hosted
-  projectIdentifier: Reference_Architecture
-  orgIdentifier: demo
+  name: localstack-testcontainers
+  identifier: localstacktestcontainers
+  projectIdentifier: Femi_Sandbox
+  orgIdentifier: sandbox
+  tags: {}
   stages:
-
-    # ── Variant A: Local Docker on Harness CI VM ──────────────────────────────
-    # Three use cases, each in its own step group.
-    # Every group has a Watch Container Events background step that streams
-    # Docker lifecycle events (create → start → stop → destroy) in real time,
-    # making the per-method container churn visible in the Harness step log.
-    #
-    # Use Case 1 — Async Messaging    : SqsLocalStackTest   (1 container / test)
-    # Use Case 2 — Read-Through Cache : TwoContainerTest    (2 containers / test)
-    # Use Case 3 — Document Storage   : ThreeContainerTest  (3 containers / test)
     - stage:
-        name: "Variant A: Local Docker"
+        name: Variant A Local Docker
         identifier: variant_a_local_docker
         type: CI
-        description: >-
-          Testcontainers uses the Docker daemon running on the Harness Cloud VM.
-          Three use cases demonstrate 1, 2, and 3 simultaneous containers per test method.
+        description: Testcontainers uses the Docker daemon running on the Harness Cloud VM. Three use cases demonstrate 1, 2, and 3 simultaneous containers per test method.
         spec:
           cloneCodebase: true
           platform:
@@ -31,32 +20,34 @@ pipeline:
             spec: {}
           execution:
             steps:
-
-              # ── Use Case 1: Async Messaging (SQS) ──────────────────────────
-              # SqsLocalStackTest — 1 LocalStack container per test method.
-              # Watch step shows: create → start → stop → destroy for each @Test.
+              - step:
+                  name: Watch Container Events
+                  identifier: watch_container_events
+                  type: Background
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "=== Watching Docker container events for all use cases ==="
+                      docker events \
+                        --filter 'type=container' \
+                        --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
               - stepGroup:
-                  name: "UC1: Async Messaging (SQS)"
+                  name: UC1 Async Messaging
                   identifier: uc1_sqs
                   steps:
                     - step:
-                        name: Watch Container Events
-                        identifier: uc1_watch_events
-                        type: Background
-                        spec:
-                          shell: Bash
-                          command: |
-                            echo "=== UC1: Watching container events for SQS tests ==="
-                            docker events \
-                              --filter 'type=container' \
-                              --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
-                    - step:
-                        name: Run SQS Tests
+                        name: Run Localstack-SQS Tests
                         identifier: uc1_run_tests
                         type: Run
                         spec:
                           shell: Bash
-                          command: |
+                          command: |-
+                            echo "================================================================"
+                            echo "  UC1: Async Messaging (SQS) — SqsLocalStackTest"
+                            echo "  Containers per test method: 1 x LocalStack (SQS)"
+                            echo "================================================================"
+                            echo ""
+
                             if ! java -version 2>&1 | grep -q '"17\.'; then
                               apt-get update -qq
                               apt-get install -y openjdk-17-jdk
@@ -67,7 +58,6 @@ pipeline:
                             fi
                             export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
                             export PATH="$JAVA_HOME/bin:$PATH"
-                            java -version
 
                             mkdir -p build
                             gradle test \
@@ -80,33 +70,23 @@ pipeline:
                           envVariables:
                             LOCALSTACK_IMAGE: localstack/localstack:3.0
                             AWS_DEFAULT_REGION: us-east-1
-
-              # ── Use Case 2: Read-Through Cache (Postgres + Redis) ───────────
-              # TwoContainerTest — 2 containers start in parallel per test method:
-              #   [1] postgres:16-alpine   [2] redis:7-alpine
-              # Watch step shows both containers cycling through each @Test.
               - stepGroup:
-                  name: "UC2: Read-Through Cache (Postgres + Redis)"
+                  name: "UC2 Read-Through Cache "
                   identifier: uc2_cache
                   steps:
                     - step:
-                        name: Watch Container Events
-                        identifier: uc2_watch_events
-                        type: Background
-                        spec:
-                          shell: Bash
-                          command: |
-                            echo "=== UC2: Watching container events for Postgres + Redis tests ==="
-                            docker events \
-                              --filter 'type=container' \
-                              --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
-                    - step:
-                        name: Run Two-Container Tests
+                        name: Run Postgres Redis Tests
                         identifier: uc2_run_tests
                         type: Run
                         spec:
                           shell: Bash
-                          command: |
+                          command: |-
+                            echo "================================================================"
+                            echo "  UC2: Read-Through Cache — TwoContainerTest"
+                            echo "  Containers per test method: 2 x Postgres + Redis"
+                            echo "================================================================"
+                            echo ""
+
                             if ! java -version 2>&1 | grep -q '"17\.'; then
                               apt-get update -qq
                               apt-get install -y openjdk-17-jdk
@@ -126,33 +106,23 @@ pipeline:
                             echo ""
                             echo "=== UC2 Summary ==="
                             grep -E "tests|BUILD" build/uc2-cache-output.log | tail -5
-
-              # ── Use Case 3: Document Storage (S3 + Postgres + Redis) ────────
-              # ThreeContainerTest — 3 containers start in parallel per test method:
-              #   [1] localstack/localstack (S3)  [2] postgres:16-alpine  [3] redis:7-alpine
-              # Watch step shows all 3 containers cycling together through each @Test.
               - stepGroup:
-                  name: "UC3: Document Storage (S3 + Postgres + Redis)"
+                  name: UC3 Document Storage
                   identifier: uc3_docs
                   steps:
                     - step:
-                        name: Watch Container Events
-                        identifier: uc3_watch_events
-                        type: Background
-                        spec:
-                          shell: Bash
-                          command: |
-                            echo "=== UC3: Watching container events for S3 + Postgres + Redis tests ==="
-                            docker events \
-                              --filter 'type=container' \
-                              --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
-                    - step:
-                        name: Run Three-Container Tests
+                        name: Run Localstack-S3 Postgres Redis Tests
                         identifier: uc3_run_tests
                         type: Run
                         spec:
                           shell: Bash
-                          command: |
+                          command: |-
+                            echo "================================================================"
+                            echo "  UC3: Document Storage — ThreeContainerTest"
+                            echo "  Containers per test method: 3 x LocalStack (S3) + Postgres + Redis"
+                            echo "================================================================"
+                            echo ""
+
                             if ! java -version 2>&1 | grep -q '"17\.'; then
                               apt-get update -qq
                               apt-get install -y openjdk-17-jdk
@@ -175,26 +145,17 @@ pipeline:
                           envVariables:
                             LOCALSTACK_IMAGE: localstack/localstack:3.0
                             AWS_DEFAULT_REGION: us-east-1
-
           caching:
             enabled: true
             paths:
               - ~/.gradle/caches
           buildIntelligence:
             enabled: false
-
-    # ── Variant B: Testcontainers Cloud (TCC) ────────────────────────────────
-    # The TCC agent runs as a background daemon and rewrites the Docker socket
-    # so Testcontainers sends containers to Testcontainers Cloud instead of the
-    # local VM. The CI VM is purely an orchestrator — containers run remotely.
-    # Requires TC_CLOUD_TOKEN secret.
     - stage:
-        name: "Variant B: Testcontainers Cloud"
+        name: Variant B Testcontainers Cloud
         identifier: variant_b_tcc
         type: CI
-        description: >-
-          The TCC agent proxies Docker calls to Testcontainers Cloud.
-          Containers run remotely in TCC — the CI VM is purely an orchestrator.
+        description: The TCC agent proxies Docker calls to Testcontainers Cloud. Containers run remotely in TCC — the CI VM is purely an orchestrator.
         spec:
           cloneCodebase: true
           platform:
@@ -286,6 +247,10 @@ pipeline:
               - ~/.gradle/caches
           buildIntelligence:
             enabled: false
-
-  tags:
-    owner: danf
+  properties:
+    ci:
+      codebase:
+        connectorRef: femigithub
+        repoName: localhost-testcontainer
+        build: <+input>
+        sparseCheckout: []
