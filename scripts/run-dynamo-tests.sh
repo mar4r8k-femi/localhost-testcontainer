@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # run-dynamo-tests.sh — Run only the DynamoDB integration tests against LocalStack.
 #
+# Each test method gets its own fresh LocalStack container (per-method lifecycle).
+#
 # Optional env vars:
 #   LOCALSTACK_IMAGE   Override the LocalStack Docker image (default: localstack/localstack:3.0)
 #   AWS_DEFAULT_REGION Override the AWS region                (default: us-east-1)
@@ -21,8 +23,8 @@ echo "  Region : $AWS_DEFAULT_REGION"
 echo ""
 
 cd "$PROJECT_DIR"
-mvn test -B -Dtest="DynamoLocalStackTest" 2>&1 | tee target/dynamo-test-output.log
+gradle test --tests "com.example.dynamodb.DynamoLocalStackTest.*" 2>&1 | tee build/dynamo-test-output.log
 
 echo ""
 echo "=== DynamoDB Test Summary ==="
-grep -E "Tests run:|BUILD" target/dynamo-test-output.log | tail -5
+grep -E "tests|BUILD" build/dynamo-test-output.log | tail -5

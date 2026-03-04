@@ -5,16 +5,72 @@ pipeline:
   orgIdentifier: demo
   stages:
 
-    # TCC agent proxies Docker calls to Testcontainers Cloud.
-    # Containers run REMOTELY in TCC — the CI VM is purely an orchestrator.
+    # ── Variant A: Local Docker on Harness CI VM ──────────────────────────────
+    # Testcontainers connects to Docker running directly on the Harness Cloud VM.
+    # No TCC agent needed — Docker socket is available at /var/run/docker.sock.
     - stage:
-        name: LocalStack Tests - Testcontainers Cloud
-        identifier: localstack_tcc
+        name: "Variant A: Local Docker"
+        identifier: variant_a_local_docker
         type: CI
         description: >-
-          The TCC agent runs as a background daemon and rewrites the Docker socket
-          so Testcontainers sends containers to Testcontainers Cloud instead of the
-          local VM. Requires TC_CLOUD_TOKEN secret.
+          Testcontainers uses the Docker daemon running on the Harness Cloud VM.
+          Containers start and stop on the same VM that runs the tests.
+        spec:
+          cloneCodebase: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  name: Run Integration Tests
+                  identifier: run_tests_local
+                  type: Run
+                  spec:
+                    shell: Bash
+                    command: |
+                      if ! java -version 2>&1 | grep -q '"17\.'; then
+                        apt-get update -qq
+                        apt-get install -y openjdk-17-jdk
+                      fi
+                      JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
+                      if [ -n "$JAVA17" ]; then
+                        update-alternatives --set java "$JAVA17"
+                      fi
+                      export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+                      export PATH="$JAVA_HOME/bin:$PATH"
+                      java -version
+
+                      gradle test 2>&1 | tee test-output.log
+
+                      echo ""
+                      echo "=== Test Summary ==="
+                      grep -E "tests|BUILD" test-output.log | tail -5
+                    envVariables:
+                      LOCALSTACK_IMAGE: localstack/localstack:3.0
+                      AWS_DEFAULT_REGION: us-east-1
+          caching:
+            enabled: true
+            paths:
+              - ~/.gradle/caches
+          buildIntelligence:
+            enabled: false
+
+    # ── Variant B: Testcontainers Cloud (TCC) ────────────────────────────────
+    # The TCC agent runs as a background daemon and rewrites the Docker socket
+    # so Testcontainers sends containers to Testcontainers Cloud instead of the
+    # local VM. The CI VM is purely an orchestrator — containers run remotely.
+    # Requires TC_CLOUD_TOKEN secret.
+    - stage:
+        name: "Variant B: Testcontainers Cloud"
+        identifier: variant_b_tcc
+        type: CI
+        description: >-
+          The TCC agent proxies Docker calls to Testcontainers Cloud.
+          Containers run remotely in TCC — the CI VM is purely an orchestrator.
         spec:
           cloneCodebase: true
           platform:
@@ -62,8 +118,8 @@ pipeline:
                             cat ~/.testcontainers.properties
                         contextType: Pipeline
                     - step:
-                        name: Run LocalStack Integration Tests
-                        identifier: run_tests
+                        name: Run Integration Tests
+                        identifier: run_tests_tcc
                         type: Run
                         spec:
                           shell: Bash
@@ -90,11 +146,11 @@ pipeline:
                                 | tr -d ' '
                             )
 
-                            mvn test -B 2>&1 | tee test-output.log
+                            gradle test 2>&1 | tee test-output.log
 
                             echo ""
                             echo "=== Test Summary ==="
-                            grep -E "Tests run:|BUILD" test-output.log | tail -5
+                            grep -E "tests|BUILD" test-output.log | tail -5
                           envVariables:
                             TC_CLOUD_TOKEN: <+secrets.getValue("account.testcontainer-token-demo")>
                             LOCALSTACK_IMAGE: localstack/localstack:3.0
@@ -103,7 +159,7 @@ pipeline:
           caching:
             enabled: true
             paths:
-              - ~/.m2/repository
+              - ~/.gradle/caches
           buildIntelligence:
             enabled: false
 

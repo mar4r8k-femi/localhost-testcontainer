@@ -1,0 +1,76 @@
+plugins {
+    id 'java'
+}
+
+group   = 'com.example'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    awsSdkVersion         = '2.25.11'
+    testcontainersVersion = '1.19.7'
+    junitVersion          = '5.10.2'
+    slf4jVersion          = '2.0.12'
+    logbackVersion        = '1.5.3'
+}
+
+dependencies {
+    // BOM imports
+    implementation platform("software.amazon.awssdk:bom:${awsSdkVersion}")
+    testImplementation platform("org.testcontainers:testcontainers-bom:${testcontainersVersion}")
+
+    // AWS SDK v2 (versions managed by BOM)
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:sqs'
+    implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'software.amazon.awssdk:dynamodb-enhanced'
+    implementation 'software.amazon.awssdk:url-connection-client'
+
+    // Logging
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "ch.qos.logback:logback-classic:${logbackVersion}"
+
+    // Redis
+    implementation 'redis.clients:jedis:5.1.2'
+
+    // JUnit 5
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+
+    // Testcontainers (versions managed by BOM)
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:localstack'
+    testImplementation 'org.testcontainers:mysql'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:junit-jupiter'
+
+    // Assertions & async
+    testImplementation 'org.assertj:assertj-core:3.25.3'
+    testImplementation 'org.awaitility:awaitility:4.2.1'
+
+    // JDBC drivers
+    testImplementation 'com.mysql:mysql-connector-j:8.3.0'
+    testImplementation 'org.postgresql:postgresql:42.7.3'
+}
+
+test {
+    useJUnitPlatform()
+    // Gradle forks tests in a new JVM — forward all env vars so LOCALSTACK_IMAGE,
+    // DOCKER_HOST, TC_CLOUD_TOKEN etc. are visible to Testcontainers
+    environment System.getenv()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

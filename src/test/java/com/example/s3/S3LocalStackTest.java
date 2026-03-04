@@ -18,18 +18,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Integration tests for S3Service against a real LocalStack container.
  *
- * The {@code @Container} annotation on a static field gives this test class
- * its own S3 container scoped to the class lifetime: Testcontainers starts it
- * before the first test and discards it after the last. Each test gets a fresh
- * bucket (random name) in {@code @BeforeEach}; no cleanup is needed because
- * the container itself is thrown away — not shared with any other test class.
+ * The {@code @Container} annotation on an instance field gives each test
+ * method its own LocalStack container: Testcontainers starts it before
+ * {@code @BeforeEach} and destroys it after the test completes.
  */
 @Testcontainers
 @TestMethodOrder(MethodOrderer.DisplayName.class)
 class S3LocalStackTest extends LocalStackBase {
 
     @Container
-    static LocalStackContainer localstack = new LocalStackContainer(IMAGE)
+    LocalStackContainer localstack = new LocalStackContainer(IMAGE)
         .withServices(Service.S3);
 
     private S3Client s3Client;
@@ -47,8 +45,6 @@ class S3LocalStackTest extends LocalStackBase {
     @AfterEach
     void tearDown() {
         s3Client.close();
-        // No bucket cleanup — the container is discarded after the class,
-        // so there is no state to restore.
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────

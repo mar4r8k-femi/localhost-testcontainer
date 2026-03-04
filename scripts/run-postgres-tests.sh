@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # run-postgres-tests.sh — Run only the Postgres integration tests.
 #
+# Each test method gets its own fresh Postgres container with fixture data
+# re-seeded via withInitScript (per-method lifecycle).
+#
 # Optional env vars:
 #   (none — Postgres image is pinned to postgres:16-alpine in the test class)
 set -euo pipefail
@@ -16,8 +19,8 @@ echo "  Image  : postgres:16-alpine"
 echo ""
 
 cd "$PROJECT_DIR"
-mvn test -B -Dtest="PostgresContainerTest" 2>&1 | tee target/postgres-test-output.log
+gradle test --tests "com.example.postgres.PostgresContainerTest.*" 2>&1 | tee build/postgres-test-output.log
 
 echo ""
 echo "=== Postgres Test Summary ==="
-grep -E "Tests run:|BUILD" target/postgres-test-output.log | tail -5
+grep -E "tests|BUILD" build/postgres-test-output.log | tail -5

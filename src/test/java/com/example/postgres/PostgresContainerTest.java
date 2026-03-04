@@ -17,12 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Integration tests for PostgresService against a real Postgres container.
  *
- * The {@code @Container} annotation on a static field gives this test class
- * its own Postgres container scoped to the class lifetime: Testcontainers
- * starts it before the first test and discards it after the last. The
- * container is pre-seeded via {@code withInitScript("db/postgres-init.sql")}.
- * Tests that write rows use UUID-based usernames so they never collide with
- * each other or with the fixture rows; no cleanup logic is written.
+ * The {@code @Container} annotation on an instance field gives each test
+ * method its own Postgres container: Testcontainers starts it (running
+ * {@code withInitScript} to seed fixture data) before {@code @BeforeEach}
+ * and destroys it after the test completes.
  */
 @Testcontainers
 @TestMethodOrder(MethodOrderer.DisplayName.class)
@@ -30,7 +28,7 @@ class PostgresContainerTest {
 
     @Container
     @SuppressWarnings("resource")
-    static PostgreSQLContainer<?> postgres =
+    PostgreSQLContainer<?> postgres =
         new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("testdb")
             .withInitScript("db/postgres-init.sql");
@@ -48,7 +46,7 @@ class PostgresContainerTest {
 
     @AfterEach
     void tearDown() {
-        // No row cleanup — the container is discarded after the class.
+        // Container is destroyed by Testcontainers after each test.
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────

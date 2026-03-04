@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # run-mysql-tests.sh — Run only the MySQL integration tests.
 #
+# Each test method gets its own fresh MySQL container with fixture data
+# re-seeded via withInitScript (per-method lifecycle).
+#
 # Optional env vars:
 #   (none — MySQL image is pinned to mysql:8 in the test class)
 set -euo pipefail
@@ -16,8 +19,8 @@ echo "  Image  : mysql:8"
 echo ""
 
 cd "$PROJECT_DIR"
-mvn test -B -Dtest="MySqlContainerTest" 2>&1 | tee target/mysql-test-output.log
+gradle test --tests "com.example.mysql.MySqlContainerTest.*" 2>&1 | tee build/mysql-test-output.log
 
 echo ""
 echo "=== MySQL Test Summary ==="
-grep -E "Tests run:|BUILD" target/mysql-test-output.log | tail -5
+grep -E "tests|BUILD" build/mysql-test-output.log | tail -5

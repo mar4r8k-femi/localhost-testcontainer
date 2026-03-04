@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # run-s3-tests.sh — Run only the S3 integration tests against LocalStack.
 #
+# Each test method gets its own fresh LocalStack container (per-method lifecycle).
+#
 # Optional env vars:
 #   LOCALSTACK_IMAGE   Override the LocalStack Docker image (default: localstack/localstack:3.0)
 #   AWS_DEFAULT_REGION Override the AWS region                (default: us-east-1)
@@ -21,8 +23,8 @@ echo "  Region : $AWS_DEFAULT_REGION"
 echo ""
 
 cd "$PROJECT_DIR"
-mvn test -B -Dtest="S3LocalStackTest" 2>&1 | tee target/s3-test-output.log
+gradle test --tests "com.example.s3.S3LocalStackTest.*" 2>&1 | tee build/s3-test-output.log
 
 echo ""
 echo "=== S3 Test Summary ==="
-grep -E "Tests run:|BUILD" target/s3-test-output.log | tail -5
+grep -E "tests|BUILD" build/s3-test-output.log | tail -5

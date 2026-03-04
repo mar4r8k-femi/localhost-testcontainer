@@ -17,13 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Integration tests for MySqlService against a real MySQL container.
  *
- * The {@code @Container} annotation on a static field gives this test class
- * its own MySQL container scoped to the class lifetime: Testcontainers starts
- * it before the first test and discards it after the last. The container is
- * pre-seeded via {@code withInitScript("db/mysql-init.sql")} — no separate
- * setup step is needed. Tests that write rows use UUID-based SKUs so they
- * never collide with each other or with the fixture rows; no cleanup logic is
- * written.
+ * The {@code @Container} annotation on an instance field gives each test
+ * method its own MySQL container: Testcontainers starts it (running
+ * {@code withInitScript} to seed fixture data) before {@code @BeforeEach}
+ * and destroys it after the test completes.
  */
 @Testcontainers
 @TestMethodOrder(MethodOrderer.DisplayName.class)
@@ -31,7 +28,7 @@ class MySqlContainerTest {
 
     @Container
     @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql =
+    MySQLContainer<?> mysql =
         new MySQLContainer<>("mysql:8")
             .withDatabaseName("testdb")
             .withInitScript("db/mysql-init.sql");
@@ -50,7 +47,7 @@ class MySqlContainerTest {
 
     @AfterEach
     void tearDown() {
-        // No row cleanup — the container is discarded after the class.
+        // Container is destroyed by Testcontainers after each test.
         // DataSource is lightweight (no pool); nothing to close.
     }
 

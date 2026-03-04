@@ -6,7 +6,7 @@ PASS="[OK]"
 FAIL="[FAIL]"
 errors=0
 
-echo "=== LocalStack Testcontainers — Prerequisite Check ==="
+echo "=== Testcontainers Integration Tests — Prerequisite Check ==="
 echo ""
 
 # ── Docker ────────────────────────────────────────────────────────────────────
@@ -39,11 +39,11 @@ else
     errors=$((errors + 1))
 fi
 
-# ── Maven ─────────────────────────────────────────────────────────────────────
-if command -v mvn &>/dev/null; then
-    echo "$PASS mvn found: $(mvn -version | head -1)"
+# ── Gradle ────────────────────────────────────────────────────────────────────
+if command -v gradle &>/dev/null; then
+    echo "$PASS gradle found: $(gradle --version 2>/dev/null | grep '^Gradle' | head -1)"
 else
-    echo "$FAIL mvn not found — install Maven (e.g. brew install maven)"
+    echo "$FAIL gradle not found — install Gradle (e.g. brew install gradle)"
     errors=$((errors + 1))
 fi
 

@@ -19,18 +19,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Integration tests for DynamoDbService against a real LocalStack container.
  *
- * The {@code @Container} annotation on a static field gives this test class
- * its own DynamoDB container scoped to the class lifetime: Testcontainers
- * starts it before the first test and discards it after the last. No shared
- * state leaks between classes, and no manual cleanup of table rows is needed —
- * the container is simply thrown away.
+ * The {@code @Container} annotation on an instance field gives each test
+ * method its own LocalStack container: Testcontainers starts it before
+ * {@code @BeforeEach} and destroys it after the test completes.
  */
 @Testcontainers
 @TestMethodOrder(MethodOrderer.DisplayName.class)
 class DynamoLocalStackTest extends LocalStackBase {
 
     @Container
-    static LocalStackContainer localstack = new LocalStackContainer(IMAGE)
+    LocalStackContainer localstack = new LocalStackContainer(IMAGE)
         .withServices(Service.DYNAMODB);
 
     private DynamoDbClient dynamoDbClient;

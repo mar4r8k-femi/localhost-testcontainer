@@ -15,17 +15,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Integration tests for RedisService against a real Redis container.
  *
- * The {@code @Container} annotation on a static field gives this test class
- * its own Redis container scoped to the class lifetime: Testcontainers starts
- * it before the first test and discards it after the last. Tests use
- * UUID-keyed data so they never collide with each other — no flush needed.
+ * The {@code @Container} annotation on an instance field gives each test
+ * method its own Redis container: Testcontainers starts it before
+ * {@code @BeforeEach} and destroys it after the test completes.
  */
 @Testcontainers
 @TestMethodOrder(MethodOrderer.DisplayName.class)
 class RedisContainerTest {
 
     @Container
-    static GenericContainer<?> redis =
+    GenericContainer<?> redis =
         new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379);
 
@@ -41,7 +40,6 @@ class RedisContainerTest {
     @AfterEach
     void tearDown() {
         jedis.close();
-        // No FLUSHALL — container is discarded after the class.
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────

@@ -20,18 +20,16 @@ import static org.awaitility.Awaitility.await;
 /**
  * Integration tests for SqsService against a real LocalStack container.
  *
- * The {@code @Container} annotation on a static field gives this test class
- * its own SQS container scoped to the class lifetime: Testcontainers starts it
- * before the first test and discards it after the last. Each test gets a fresh
- * queue (random name) in {@code @BeforeEach}; no cleanup is needed because
- * the container itself is thrown away — not shared with any other test class.
+ * The {@code @Container} annotation on an instance field gives each test
+ * method its own LocalStack container: Testcontainers starts it before
+ * {@code @BeforeEach} and destroys it after the test completes.
  */
 @Testcontainers
 @TestMethodOrder(MethodOrderer.DisplayName.class)
 class SqsLocalStackTest extends LocalStackBase {
 
     @Container
-    static LocalStackContainer localstack = new LocalStackContainer(IMAGE)
+    LocalStackContainer localstack = new LocalStackContainer(IMAGE)
         .withServices(Service.SQS);
 
     private SqsClient sqsClient;
@@ -49,8 +47,6 @@ class SqsLocalStackTest extends LocalStackBase {
     @AfterEach
     void tearDown() {
         sqsClient.close();
-        // No queue cleanup — the container is discarded after the class,
-        // so there is no state to restore.
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────
