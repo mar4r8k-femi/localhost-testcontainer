@@ -26,6 +26,21 @@ pipeline:
           execution:
             steps:
               - step:
+                  # Streams Docker container lifecycle events for the duration of
+                  # the test run. Each Testcontainers container (per test method)
+                  # will appear as: create → start → stop → destroy.
+                  # Output is visible in the Harness step log in real time.
+                  name: Watch Container Events
+                  identifier: watch_container_events
+                  type: Background
+                  spec:
+                    shell: Bash
+                    command: |
+                      echo "Streaming Docker container events..."
+                      docker events \
+                        --filter 'type=container' \
+                        --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
+              - step:
                   name: Run Integration Tests
                   identifier: run_tests_local
                   type: Run

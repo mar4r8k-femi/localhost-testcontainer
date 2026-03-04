@@ -46,18 +46,22 @@ src/
     redis/       RedisContainerTest.java    # per-method Redis container
     mysql/       MySqlContainerTest.java    # per-method MySQL container
     postgres/    PostgresContainerTest.java # per-method Postgres container
+    multicontainer/
+                 TwoContainerTest.java      # 2 simultaneous: Postgres + Redis
+                 ThreeContainerTest.java    # 3 simultaneous: LocalStack (S3) + Postgres + Redis
   test/resources/
     db/          mysql-init.sql          # products table + 3 fixture rows
                  postgres-init.sql       # users table + 3 fixture rows
 scripts/
-  check-prereqs.sh      # verify Docker, Java 17+, Gradle are available
-  run-all-tests.sh      # run full suite
-  run-s3-tests.sh       # run S3 tests only
-  run-sqs-tests.sh      # run SQS tests only
-  run-dynamo-tests.sh   # run DynamoDB tests only
-  run-redis-tests.sh    # run Redis tests only
-  run-mysql-tests.sh    # run MySQL tests only
-  run-postgres-tests.sh # run Postgres tests only
+  check-prereqs.sh            # verify Docker, Java 17+, Gradle are available
+  run-all-tests.sh            # run full suite
+  run-s3-tests.sh             # run S3 tests only
+  run-sqs-tests.sh            # run SQS tests only
+  run-dynamo-tests.sh         # run DynamoDB tests only
+  run-redis-tests.sh          # run Redis tests only
+  run-mysql-tests.sh          # run MySQL tests only
+  run-postgres-tests.sh       # run Postgres tests only
+  run-multicontainer-tests.sh # run 2- and 3-container simultaneous tests
 ```
 
 ## Running locally
@@ -76,6 +80,7 @@ scripts/
 ./scripts/run-redis-tests.sh
 ./scripts/run-mysql-tests.sh
 ./scripts/run-postgres-tests.sh
+./scripts/run-multicontainer-tests.sh
 
 # Or invoke Gradle directly
 gradle test
@@ -85,6 +90,7 @@ gradle test --tests "com.example.dynamodb.DynamoLocalStackTest.*"
 gradle test --tests "com.example.redis.RedisContainerTest.*"
 gradle test --tests "com.example.mysql.MySqlContainerTest.*"
 gradle test --tests "com.example.postgres.PostgresContainerTest.*"
+gradle test --tests "com.example.multicontainer.*"
 ```
 
 ## CI pipeline variants
@@ -111,6 +117,8 @@ Redis, MySQL, and Postgres images are pinned directly in each test class.
 
 ## Services tested
 
+**Single-container tests** (one container per test method):
+
 | Service  | Container image       | Tests                              |
 |----------|-----------------------|------------------------------------|
 | S3       | localstack/localstack | Upload, download, list, delete objects |
@@ -119,3 +127,10 @@ Redis, MySQL, and Postgres images are pinned directly in each test class.
 | Redis    | redis:7-alpine        | Get/set, delete, increment, expire |
 | MySQL    | mysql:8               | CRUD on pre-seeded products table  |
 | Postgres | postgres:16-alpine    | CRUD on pre-seeded users table     |
+
+**Multi-container tests** (all containers start in parallel per test method):
+
+| Test class          | Containers                              | Scenario                                   |
+|---------------------|-----------------------------------------|--------------------------------------------|
+| `TwoContainerTest`  | Postgres + Redis                        | Read-through cache: miss → Postgres → warm Redis; write-through to both |
+| `ThreeContainerTest`| LocalStack (S3) + Postgres + Redis      | Document storage: upload to S3, owner in Postgres, S3 ref cached in Redis |
