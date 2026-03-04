@@ -42,11 +42,10 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |-
-                            echo "================================================================"
-                            echo "  UC1: Async Messaging (SQS) — SqsLocalStackTest"
-                            echo "  Containers per test method: 1 x LocalStack (SQS)"
-                            echo "================================================================"
-                            echo ""
+                            # Sentinel: name appears in the docker events background log
+                            docker run --rm \
+                              --name "MARKER--UC1--SqsLocalStackTest--1x-LocalStack" \
+                              alpine true
 
                             if ! java -version 2>&1 | grep -q '"17\.'; then
                               apt-get update -qq
@@ -81,11 +80,10 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |-
-                            echo "================================================================"
-                            echo "  UC2: Read-Through Cache — TwoContainerTest"
-                            echo "  Containers per test method: 2 x Postgres + Redis"
-                            echo "================================================================"
-                            echo ""
+                            # Sentinel: name appears in the docker events background log
+                            docker run --rm \
+                              --name "MARKER--UC2--TwoContainerTest--2x-Postgres-Redis" \
+                              alpine true
 
                             if ! java -version 2>&1 | grep -q '"17\.'; then
                               apt-get update -qq
@@ -117,11 +115,10 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |-
-                            echo "================================================================"
-                            echo "  UC3: Document Storage — ThreeContainerTest"
-                            echo "  Containers per test method: 3 x LocalStack (S3) + Postgres + Redis"
-                            echo "================================================================"
-                            echo ""
+                            # Sentinel: name appears in the docker events background log
+                            docker run --rm \
+                              --name "MARKER--UC3--ThreeContainerTest--3x-LocalStack-Postgres-Redis" \
+                              alpine true
 
                             if ! java -version 2>&1 | grep -q '"17\.'; then
                               apt-get update -qq
