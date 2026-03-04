@@ -32,26 +32,6 @@ pipeline:
           execution:
             steps:
 
-              # ── Shared prerequisite ─────────────────────────────────────────
-              - step:
-                  name: Setup Java
-                  identifier: setup_java
-                  type: Run
-                  spec:
-                    shell: Bash
-                    command: |
-                      if ! java -version 2>&1 | grep -q '"17\.'; then
-                        apt-get update -qq
-                        apt-get install -y openjdk-17-jdk
-                      fi
-                      JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
-                      if [ -n "$JAVA17" ]; then
-                        update-alternatives --set java "$JAVA17"
-                      fi
-                      export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                      export PATH="$JAVA_HOME/bin:$PATH"
-                      java -version
-
               # ── Use Case 1: Async Messaging (SQS) ──────────────────────────
               # SqsLocalStackTest — 1 LocalStack container per test method.
               # Watch step shows: create → start → stop → destroy for each @Test.
@@ -77,6 +57,19 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |
+                            if ! java -version 2>&1 | grep -q '"17\.'; then
+                              apt-get update -qq
+                              apt-get install -y openjdk-17-jdk
+                            fi
+                            JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
+                            if [ -n "$JAVA17" ]; then
+                              update-alternatives --set java "$JAVA17"
+                            fi
+                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+                            export PATH="$JAVA_HOME/bin:$PATH"
+                            java -version
+
+                            mkdir -p build
                             gradle test \
                               --tests "com.example.sqs.SqsLocalStackTest.*" \
                               2>&1 | tee build/uc1-sqs-output.log
@@ -114,6 +107,18 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |
+                            if ! java -version 2>&1 | grep -q '"17\.'; then
+                              apt-get update -qq
+                              apt-get install -y openjdk-17-jdk
+                            fi
+                            JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
+                            if [ -n "$JAVA17" ]; then
+                              update-alternatives --set java "$JAVA17"
+                            fi
+                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+                            export PATH="$JAVA_HOME/bin:$PATH"
+
+                            mkdir -p build
                             gradle test \
                               --tests "com.example.multicontainer.TwoContainerTest.*" \
                               2>&1 | tee build/uc2-cache-output.log
@@ -148,6 +153,18 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |
+                            if ! java -version 2>&1 | grep -q '"17\.'; then
+                              apt-get update -qq
+                              apt-get install -y openjdk-17-jdk
+                            fi
+                            JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
+                            if [ -n "$JAVA17" ]; then
+                              update-alternatives --set java "$JAVA17"
+                            fi
+                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
+                            export PATH="$JAVA_HOME/bin:$PATH"
+
+                            mkdir -p build
                             gradle test \
                               --tests "com.example.multicontainer.ThreeContainerTest.*" \
                               2>&1 | tee build/uc3-docs-output.log
