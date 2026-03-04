@@ -8,6 +8,7 @@ import software.amazon.awssdk.services.dynamodb.model.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class DynamoDbService {
 
@@ -49,7 +50,7 @@ public class DynamoDbService {
     public List<OrderItem> findByOrderId(String orderId) {
         QueryConditional qc = QueryConditional
             .keyEqualTo(Key.builder().partitionValue(orderId).build());
-        return table.query(qc).items().stream().toList();
+        return table.query(qc).items().stream().collect(Collectors.toList());
     }
 
     public void delete(String orderId, String itemId) {

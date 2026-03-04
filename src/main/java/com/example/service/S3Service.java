@@ -6,6 +6,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Thin wrapper around the AWS S3 SDK.
@@ -50,7 +51,7 @@ public class S3Service {
             .contents()
             .stream()
             .map(S3Object::key)
-            .toList();
+            .collect(Collectors.toList());
     }
 
     public void deleteObject(String bucket, String key) {
