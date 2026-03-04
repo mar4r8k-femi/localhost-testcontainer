@@ -6,15 +6,21 @@ pipeline:
   stages:
 
     # ── Variant A: Local Docker on Harness CI VM ──────────────────────────────
-    # Testcontainers connects to Docker running directly on the Harness Cloud VM.
-    # No TCC agent needed — Docker socket is available at /var/run/docker.sock.
+    # Three use cases, each in its own step group.
+    # Every group has a Watch Container Events background step that streams
+    # Docker lifecycle events (create → start → stop → destroy) in real time,
+    # making the per-method container churn visible in the Harness step log.
+    #
+    # Use Case 1 — Async Messaging    : SqsLocalStackTest   (1 container / test)
+    # Use Case 2 — Read-Through Cache : TwoContainerTest    (2 containers / test)
+    # Use Case 3 — Document Storage   : ThreeContainerTest  (3 containers / test)
     - stage:
         name: "Variant A: Local Docker"
         identifier: variant_a_local_docker
         type: CI
         description: >-
           Testcontainers uses the Docker daemon running on the Harness Cloud VM.
-          Containers start and stop on the same VM that runs the tests.
+          Three use cases demonstrate 1, 2, and 3 simultaneous containers per test method.
         spec:
           cloneCodebase: true
           platform:
@@ -25,24 +31,11 @@ pipeline:
             spec: {}
           execution:
             steps:
+
+              # ── Shared prerequisite ─────────────────────────────────────────
               - step:
-                  # Streams Docker container lifecycle events for the duration of
-                  # the test run. Each Testcontainers container (per test method)
-                  # will appear as: create → start → stop → destroy.
-                  # Output is visible in the Harness step log in real time.
-                  name: Watch Container Events
-                  identifier: watch_container_events
-                  type: Background
-                  spec:
-                    shell: Bash
-                    command: |
-                      echo "Streaming Docker container events..."
-                      docker events \
-                        --filter 'type=container' \
-                        --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
-              - step:
-                  name: Run Integration Tests
-                  identifier: run_tests_local
+                  name: Setup Java
+                  identifier: setup_java
                   type: Run
                   spec:
                     shell: Bash
@@ -59,14 +52,113 @@ pipeline:
                       export PATH="$JAVA_HOME/bin:$PATH"
                       java -version
 
-                      gradle test 2>&1 | tee test-output.log
+              # ── Use Case 1: Async Messaging (SQS) ──────────────────────────
+              # SqsLocalStackTest — 1 LocalStack container per test method.
+              # Watch step shows: create → start → stop → destroy for each @Test.
+              - stepGroup:
+                  name: "UC1: Async Messaging (SQS)"
+                  identifier: uc1_sqs
+                  steps:
+                    - step:
+                        name: Watch Container Events
+                        identifier: uc1_watch_events
+                        type: Background
+                        spec:
+                          shell: Bash
+                          command: |
+                            echo "=== UC1: Watching container events for SQS tests ==="
+                            docker events \
+                              --filter 'type=container' \
+                              --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
+                    - step:
+                        name: Run SQS Tests
+                        identifier: uc1_run_tests
+                        type: Run
+                        spec:
+                          shell: Bash
+                          command: |
+                            gradle test \
+                              --tests "com.example.sqs.SqsLocalStackTest.*" \
+                              2>&1 | tee build/uc1-sqs-output.log
 
-                      echo ""
-                      echo "=== Test Summary ==="
-                      grep -E "tests|BUILD" test-output.log | tail -5
-                    envVariables:
-                      LOCALSTACK_IMAGE: localstack/localstack:3.0
-                      AWS_DEFAULT_REGION: us-east-1
+                            echo ""
+                            echo "=== UC1 Summary ==="
+                            grep -E "tests|BUILD" build/uc1-sqs-output.log | tail -5
+                          envVariables:
+                            LOCALSTACK_IMAGE: localstack/localstack:3.0
+                            AWS_DEFAULT_REGION: us-east-1
+
+              # ── Use Case 2: Read-Through Cache (Postgres + Redis) ───────────
+              # TwoContainerTest — 2 containers start in parallel per test method:
+              #   [1] postgres:16-alpine   [2] redis:7-alpine
+              # Watch step shows both containers cycling through each @Test.
+              - stepGroup:
+                  name: "UC2: Read-Through Cache (Postgres + Redis)"
+                  identifier: uc2_cache
+                  steps:
+                    - step:
+                        name: Watch Container Events
+                        identifier: uc2_watch_events
+                        type: Background
+                        spec:
+                          shell: Bash
+                          command: |
+                            echo "=== UC2: Watching container events for Postgres + Redis tests ==="
+                            docker events \
+                              --filter 'type=container' \
+                              --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
+                    - step:
+                        name: Run Two-Container Tests
+                        identifier: uc2_run_tests
+                        type: Run
+                        spec:
+                          shell: Bash
+                          command: |
+                            gradle test \
+                              --tests "com.example.multicontainer.TwoContainerTest.*" \
+                              2>&1 | tee build/uc2-cache-output.log
+
+                            echo ""
+                            echo "=== UC2 Summary ==="
+                            grep -E "tests|BUILD" build/uc2-cache-output.log | tail -5
+
+              # ── Use Case 3: Document Storage (S3 + Postgres + Redis) ────────
+              # ThreeContainerTest — 3 containers start in parallel per test method:
+              #   [1] localstack/localstack (S3)  [2] postgres:16-alpine  [3] redis:7-alpine
+              # Watch step shows all 3 containers cycling together through each @Test.
+              - stepGroup:
+                  name: "UC3: Document Storage (S3 + Postgres + Redis)"
+                  identifier: uc3_docs
+                  steps:
+                    - step:
+                        name: Watch Container Events
+                        identifier: uc3_watch_events
+                        type: Background
+                        spec:
+                          shell: Bash
+                          command: |
+                            echo "=== UC3: Watching container events for S3 + Postgres + Redis tests ==="
+                            docker events \
+                              --filter 'type=container' \
+                              --format '{{.Time | printf "%.19s"}} {{.Action | printf "%-10s"}} image={{.Actor.Attributes.image}} name={{.Actor.Attributes.name}}'
+                    - step:
+                        name: Run Three-Container Tests
+                        identifier: uc3_run_tests
+                        type: Run
+                        spec:
+                          shell: Bash
+                          command: |
+                            gradle test \
+                              --tests "com.example.multicontainer.ThreeContainerTest.*" \
+                              2>&1 | tee build/uc3-docs-output.log
+
+                            echo ""
+                            echo "=== UC3 Summary ==="
+                            grep -E "tests|BUILD" build/uc3-docs-output.log | tail -5
+                          envVariables:
+                            LOCALSTACK_IMAGE: localstack/localstack:3.0
+                            AWS_DEFAULT_REGION: us-east-1
+
           caching:
             enabled: true
             paths:
