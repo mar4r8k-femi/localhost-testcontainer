@@ -10,6 +10,9 @@ pipeline:
         identifier: variant_a_local_docker
         type: CI
         description: Testcontainers uses the Docker daemon running on the Harness Cloud VM. Three use cases demonstrate 1, 2, and 3 simultaneous containers per test method.
+        when:
+          pipelineStatus: Success
+          condition: <+pipeline.variables.variant> == "A" || <+pipeline.variables.variant> == "both"
         spec:
           cloneCodebase: true
           platform:
@@ -42,22 +45,6 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |-
-                            # Sentinel: name appears in the docker events background log
-                            docker run --rm \
-                              --name "MARKER--UC1--SqsLocalStackTest--1x-LocalStack" \
-                              alpine true
-
-                            if ! java -version 2>&1 | grep -q '"17\.'; then
-                              apt-get update -qq
-                              apt-get install -y openjdk-17-jdk
-                            fi
-                            JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
-                            if [ -n "$JAVA17" ]; then
-                              update-alternatives --set java "$JAVA17"
-                            fi
-                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                            export PATH="$JAVA_HOME/bin:$PATH"
-
                             mkdir -p build
                             gradle test \
                               --tests "com.example.sqs.SqsLocalStackTest.*" \
@@ -80,22 +67,6 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |-
-                            # Sentinel: name appears in the docker events background log
-                            docker run --rm \
-                              --name "MARKER--UC2--TwoContainerTest--2x-Postgres-Redis" \
-                              alpine true
-
-                            if ! java -version 2>&1 | grep -q '"17\.'; then
-                              apt-get update -qq
-                              apt-get install -y openjdk-17-jdk
-                            fi
-                            JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
-                            if [ -n "$JAVA17" ]; then
-                              update-alternatives --set java "$JAVA17"
-                            fi
-                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                            export PATH="$JAVA_HOME/bin:$PATH"
-
                             mkdir -p build
                             gradle test \
                               --tests "com.example.multicontainer.TwoContainerTest.*" \
@@ -115,22 +86,6 @@ pipeline:
                         spec:
                           shell: Bash
                           command: |-
-                            # Sentinel: name appears in the docker events background log
-                            docker run --rm \
-                              --name "MARKER--UC3--ThreeContainerTest--3x-LocalStack-Postgres-Redis" \
-                              alpine true
-
-                            if ! java -version 2>&1 | grep -q '"17\.'; then
-                              apt-get update -qq
-                              apt-get install -y openjdk-17-jdk
-                            fi
-                            JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
-                            if [ -n "$JAVA17" ]; then
-                              update-alternatives --set java "$JAVA17"
-                            fi
-                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                            export PATH="$JAVA_HOME/bin:$PATH"
-
                             mkdir -p build
                             gradle test \
                               --tests "com.example.multicontainer.ThreeContainerTest.*" \
@@ -153,6 +108,9 @@ pipeline:
         identifier: variant_b_tcc
         type: CI
         description: The TCC agent proxies Docker calls to Testcontainers Cloud. Containers run remotely in TCC — the CI VM is purely an orchestrator.
+        when:
+          pipelineStatus: Success
+          condition: <+pipeline.variables.variant> == "B" || <+pipeline.variables.variant> == "both"
         spec:
           cloneCodebase: true
           platform:
@@ -244,6 +202,12 @@ pipeline:
               - ~/.gradle/caches
           buildIntelligence:
             enabled: false
+  variables:
+    - name: variant
+      type: String
+      description: "Which variant to run: A (local Docker), B (Testcontainers Cloud), or both"
+      required: true
+      value: <+input>.allowedValues(A,B,both)
   properties:
     ci:
       codebase:
