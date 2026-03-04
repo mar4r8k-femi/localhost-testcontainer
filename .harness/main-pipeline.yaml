@@ -1,5 +1,5 @@
 pipeline:
-  name: localstack-testcontainers
+  name: Testcontainers
   identifier: localstacktestcontainers
   projectIdentifier: Femi_Sandbox
   orgIdentifier: sandbox
@@ -53,9 +53,6 @@ pipeline:
                             echo ""
                             echo "=== UC1 Summary ==="
                             grep -E "tests|BUILD" build/uc1-sqs-output.log | tail -5
-                          envVariables:
-                            LOCALSTACK_IMAGE: localstack/localstack:3.0
-                            AWS_DEFAULT_REGION: us-east-1
               - stepGroup:
                   name: "UC2 Read-Through Cache "
                   identifier: uc2_cache
@@ -94,9 +91,6 @@ pipeline:
                             echo ""
                             echo "=== UC3 Summary ==="
                             grep -E "tests|BUILD" build/uc3-docs-output.log | tail -5
-                          envVariables:
-                            LOCALSTACK_IMAGE: localstack/localstack:3.0
-                            AWS_DEFAULT_REGION: us-east-1
           caching:
             enabled: true
             paths:
@@ -112,7 +106,7 @@ pipeline:
           pipelineStatus: Success
           condition: <+pipeline.variables.variant> == "B" || <+pipeline.variables.variant> == "both"
         spec:
-          cloneCodebase: true
+          cloneCodebase: false
           platform:
             os: Linux
             arch: Amd64
@@ -163,34 +157,20 @@ pipeline:
                         type: Run
                         spec:
                           shell: Bash
-                          command: |
-                            if ! java -version 2>&1 | grep -q '"17\.'; then
-                              apt-get update -qq
-                              apt-get install -y openjdk-17-jdk
-                            fi
-                            JAVA17=$(update-alternatives --list java 2>/dev/null | grep java-17 | head -1)
-                            if [ -n "$JAVA17" ]; then
-                              update-alternatives --set java "$JAVA17"
-                            fi
-                            export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-                            export PATH="$JAVA_HOME/bin:$PATH"
-                            java -version
-
-                            # .testcontainers.properties uses Java escape syntax
-                            # (tcp\://localhost\:42145). Strip backslashes so
-                            # DOCKER_HOST is a valid URL: tcp://localhost:42145
+                          command: |-
                             export DOCKER_HOST=$(
                               grep 'docker.host' ~/.testcontainers.properties \
-                                | cut -d'=' -f2- \
-                                | sed 's/\\//g' \
+                                | cut -d'=' -f2 \
                                 | tr -d ' '
                             )
+                            git clone https://github.com/AtomicJar/testcontainers-cloud-java-example
+                            cd testcontainers-cloud-java-example
 
-                            gradle test 2>&1 | tee test-output.log
+                            ./mvnw test -B 2>&1 | tee test-output.log
 
                             echo ""
                             echo "=== Test Summary ==="
-                            grep -E "tests|BUILD" test-output.log | tail -5
+                            grep -E "Tests run:|BUILD" test-output.log | tail -5
                           envVariables:
                             TC_CLOUD_TOKEN: <+secrets.getValue("account.testcontainer-token-demo")>
                             LOCALSTACK_IMAGE: localstack/localstack:3.0
